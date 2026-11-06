@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cubo — gire, embaralhe, aprenda</title>
+  <meta name="description" content="Cubo mágico 3x3x3 em 3D: gire as camadas, embaralhe, resolva e aprenda a resolver o seu cubo passo a passo.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Crect width='30' height='30' rx='6' fill='%23141310'/%3E%3Crect x='4' y='4' width='6' height='6' rx='1.5' fill='%23ffd31a'/%3E%3Crect x='12' y='4' width='6' height='6' rx='1.5' fill='%23cc1f2e'/%3E%3Crect x='20' y='4' width='6' height='6' rx='1.5' fill='%2300a05a'/%3E%3Crect x='4' y='12' width='6' height='6' rx='1.5' fill='%231653c4'/%3E%3Crect x='12' y='12' width='6' height='6' rx='1.5' fill='%23f2f1ea'/%3E%3Crect x='20' y='12' width='6' height='6' rx='1.5' fill='%23ff6a13'/%3E%3Crect x='4' y='20' width='6' height='6' rx='1.5' fill='%2300a05a'/%3E%3Crect x='12' y='20' width='6' height='6' rx='1.5' fill='%23ffd31a'/%3E%3Crect x='20' y='20' width='6' height='6' rx='1.5' fill='%23cc1f2e'/%3E%3C/svg%3E">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/" } }
+  </script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#" aria-label="Cubo">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="brand-word">cubo<em>.</em></span>
+    </a>
+    <nav class="tabs" role="tablist">
+      <button class="tab is-on" data-mode="play" role="tab">Brincar</button>
+      <button class="tab" data-mode="learn" role="tab">Aprender a resolver</button>
+    </nav>
+    <button class="link-btn" id="btn-notation">Notação</button>
+  </header>
+
+  <main class="layout">
+    <section class="stage" id="stage">
+      <div class="stage-word" aria-hidden="true">cubo<em>.</em></div>
+      <div class="stage-hint" id="stage-hint">Arraste uma face para girar a camada · arraste o fundo para ver de outro ângulo</div>
+      <div class="view-pad" id="view-pad" hidden>
+        <span>Ver:</span>
+        <button data-view="F">Frente</button><button data-view="R">Direita</button><button data-view="B">Trás</button>
+        <button data-view="L">Esquerda</button><button data-view="U">Cima</button><button data-view="D">Baixo</button>
+        <button data-view="home">3/4</button>
+      </div>
+      <div class="stage-badge" id="stage-badge" hidden></div>
+      <footer class="signature">
+        Desenvolvido por <strong>Fabricio Moura</strong>
+        <a href="https://instagram.com/mouraafabricio" target="_blank" rel="noopener">@mouraafabricio</a>
+      </footer>
+    </section>
+
+    <!-- ========== MODO BRINCAR ========== -->
+    <aside class="panel" id="panel-play">
+      <p class="eyebrow">3×3×3 — peças reais, giros reais</p>
+      <h1 class="display">Gire, embaralhe,<br><em>resolva.</em></h1>
+      <p class="lede">Cada camada gira 90° em torno do próprio eixo, com os mesmos 26 cubinhos de um cubo físico. Embaralhe, tente resolver — ou peça ajuda.</p>
+
+      <div class="actions">
+        <button class="btn btn-ink" id="btn-scramble">Embaralhar</button>
+        <button class="btn btn-line" id="btn-solve">Resolver</button>
+        <button class="btn btn-ghost" id="btn-reset" title="Volta ao cubo montado">Reiniciar</button>
+      </div>
+
+      <div class="readout">
+        <div class="readout-row">
+          <span class="label">Movimentos</span><span class="mono big" id="move-count">0</span>
+          <span class="label">Estado</span><span class="state-pill" id="state-pill">montado</span>
+        </div>
+        <div class="seq" id="seq" aria-live="polite"></div>
+      </div>
+
+      <div class="speed">
+        <label for="speed-play" class="label">Velocidade</label>
+        <input type="range" id="speed-play" min="60" max="500" value="200" step="10">
+      </div>
+
+      <details class="keys">
+        <summary>Atalhos de teclado</summary>
+        <p>Use as letras da notação: <kbd>R</kbd> <kbd>L</kbd> <kbd>U</kbd> <kbd>D</kbd> <kbd>F</kbd> <kbd>B</kbd>, fatias <kbd>M</kbd> <kbd>E</kbd> <kbd>S</kbd> e o cubo inteiro <kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd>. Segure <kbd>Shift</kbd> para o sentido contrário.</p>
+      </details>
+    </aside>
+
+    <!-- ========== MODO APRENDER ========== -->
+    <aside class="panel" id="panel-learn" hidden>
+      <ol class="phases" id="phases">
+        <li class="is-on" data-phase="paint"><span>1</span>Pinte o seu cubo</li>
+        <li data-phase="solve"><span>2</span>Resolva comigo</li>
+      </ol>
+
+      <!-- Fase 1: pintar -->
+      <div id="phase-paint">
+        <h2 class="display md">Mostre o cubo<br>da sua <em>mão.</em></h2>
+
+        <button class="scan-cta" id="btn-scan">
+          <span class="scan-cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.8-2.5h6.4L17 8.5h3v10H4z" /><circle cx="12" cy="13.3" r="3.3" /></svg></span>
+          <span class="scan-cta-txt"><strong>Escanear com a câmera</strong><small>Mostre as 6 faces e as cores são lidas sozinhas</small></span>
+          <span class="scan-cta-go" aria-hidden="true">→</span>
+        </button>
+        <p class="scan-or">ou pinte manualmente</p>
+
+        <div class="hold">
+          <div class="hold-cube" aria-hidden="true"><b class="t"></b><b class="f"></b><b class="r"></b></div>
+          <p>Segure o cubo com o centro <strong class="chip-y">amarelo em cima</strong> e o <strong class="chip-g">verde de frente</strong>. Os centros nunca mudam de lugar — eles já estão pintados.</p>
+        </div>
+
+        <div class="face-tabs" id="face-tabs"></div>
+        <div class="face-editor">
+          <div class="face-grid" id="face-grid"></div>
+          <div class="face-help">
+            <p class="face-title" id="face-title"></p>
+            <p class="face-how" id="face-how"></p>
+          </div>
+        </div>
+
+        <div class="palette" id="palette"></div>
+
+        <div class="net-wrap">
+          <span class="label">Visão geral (planificado)</span>
+          <div class="net" id="net"></div>
+        </div>
+
+        <div class="errors" id="paint-errors" hidden></div>
+
+        <div class="actions">
+          <button class="btn btn-ink" id="btn-check">Conferir e resolver</button>
+          <button class="btn btn-line" id="btn-demo" title="Preenche com um cubo embaralhado aleatório">Exemplo</button>
+          <button class="btn btn-ghost" id="btn-clear">Limpar</button>
+        </div>
+      </div>
+
+      <!-- Fase 2: resolver -->
+      <div id="phase-solve" hidden>
+        <div class="stages" id="stage-list"></div>
+
+        <article class="lesson">
+          <p class="eyebrow" id="lesson-num"></p>
+          <h2 class="display sm" id="lesson-title"></h2>
+          <p class="lesson-goal" id="lesson-goal"></p>
+          <p class="lesson-text" id="lesson-text"></p>
+        </article>
+
+        <div class="step">
+          <p class="step-title" id="step-title"></p>
+          <p class="step-text" id="step-text"></p>
+          <div class="step-moves" id="step-moves"></div>
+        </div>
+
+        <div class="now">
+          <div class="now-key" id="now-key">R</div>
+          <div class="now-desc">
+            <p class="now-face" id="now-face"></p>
+            <p class="now-how" id="now-how"></p>
+          </div>
+        </div>
+
+        <div class="player">
+          <button class="btn btn-line icon" id="btn-prev" title="Voltar um movimento (←)" aria-label="Voltar">
+            <svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" /></svg>
+          </button>
+          <button class="btn btn-ink grow" id="btn-next">Fiz este movimento →</button>
+          <button class="btn btn-line icon" id="btn-auto" title="Tocar automaticamente" aria-label="Tocar">
+            <svg viewBox="0 0 24 24" class="ic-play"><path d="M8 5v14l11-7z" /></svg>
+          </button>
+        </div>
+        <div class="progress"><div class="bar" id="bar"></div></div>
+        <div class="player-foot">
+          <span class="mono" id="counter">0 / 0</span>
+          <label class="speed-inline">velocidade <input type="range" id="speed-learn" min="200" max="1200" value="650" step="50"></label>
+          <button class="link-btn" id="btn-edit">Editar cores</button>
+        </div>
+
+        <div class="done" id="done" hidden>
+          <h3 class="display md"><em>Resolvido.</em></h3>
+          <p>Se o cubo na sua mão está igual ao da tela, parabéns — você acabou de resolver um cubo mágico. Na próxima vez, tente lembrar das etapas: são só 8, e os algoritmos se repetem.</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <dialog class="sheet" id="notation">
+    <form method="dialog"><button class="close" aria-label="Fechar">×</button></form>
+    <h2 class="display md">Como ler os <em>movimentos</em></h2>
+    <p>Cada letra é uma face, sempre olhando o cubo de frente. Sozinha, a letra significa girar aquela face <strong>no sentido horário</strong> como se você estivesse olhando direto para ela.</p>
+    <dl class="notation-grid">
+      <div><dt>R</dt><dd>Direita (Right) — sobe</dd></div>
+      <div><dt>L</dt><dd>Esquerda (Left) — desce</dd></div>
+      <div><dt>U</dt><dd>Topo (Up) — vai para a esquerda</dd></div>
+      <div><dt>D</dt><dd>Base (Down) — vai para a direita</dd></div>
+      <div><dt>F</dt><dd>Frente (Front) — horário</dd></div>
+      <div><dt>B</dt><dd>Trás (Back) — topo vai p/ esquerda</dd></div>
+      <div><dt>X'</dt><dd>Apóstrofo: sentido contrário</dd></div>
+      <div><dt>X2</dt><dd>Meia volta (duas vezes)</dd></div>
+      <div><dt>y</dt><dd>Gira o cubo inteiro, como o U</dd></div>
+    </dl>
+  </dialog>
+
+  <dialog class="scan" id="scan" aria-label="Escanear o cubo">
+    <div class="scan-top">
+      <button class="scan-x" id="scan-close" aria-label="Fechar">×</button>
+      <span class="scan-step" id="scan-step"></span>
+      <span class="spacer"></span>
+    </div>
+    <div class="scan-view">
+      <video id="scan-video" playsinline muted autoplay></video>
+      <div class="scan-guide" id="scan-guide"></div>
+      <div class="scan-tip" id="scan-tip"></div>
+      <div class="scan-msg" id="scan-msg" hidden></div>
+    </div>
+    <div class="scan-bottom">
+      <p class="scan-warn" id="scan-warn" hidden></p>
+      <div class="scan-faces" id="scan-faces"></div>
+      <button class="scan-shutter" id="scan-shutter" aria-label="Capturar esta face" autofocus></button>
+    </div>
+    <section class="scan-result" id="scan-result" hidden>
+      <div>
+        <p class="eyebrow">Leitura concluída</p>
+        <h2 class="display md" id="scan-r-title"></h2>
+        <div class="net" id="scan-net"></div>
+        <p id="scan-r-text"></p>
+        <div class="actions">
+          <button class="btn btn-ink" id="scan-primary"></button>
+          <button class="btn btn-line" id="scan-secondary"></button>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
