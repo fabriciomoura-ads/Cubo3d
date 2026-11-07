@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { parseMove, idxOf, moveFromTurn } from './cube-core.js';
+import { parseMove, idxOf, moveFromTurn, FACES } from './cube-core.js';
 
 export const PALETTE = {
   W: '#ffffff', Y: '#ffe600', G: '#00d060', B: '#0a5fff', R: '#f0102c', O: '#ff7a00', X: '#8b8e94',
@@ -137,6 +137,7 @@ export class CubeView {
   setColors(state) {
     this.queue.length = 0;
     if (this.anim) { this.finishAnim(true); }
+    this.stopFlash();
     for (const g of this.cubies) {
       g.position.set(...g.userData.home);
       g.quaternion.identity();
@@ -152,8 +153,35 @@ export class CubeView {
 
   get busy() { return !!this.anim || this.queue.length > 0; }
 
-  turn(move, duration = 220) {
-    return new Promise((resolve) => { this.queue.push({ move, duration, resolve }); });
+  // opts.split: giro duplo (R2, y2…) vira dois quartos de volta com uma pausa no meio.
+  turn(move, duration = 220, opts = {}) {
+    return new Promise((resolve) => {
+      if (opts.split && move.endsWith('2')) {
+        const quarter = move.slice(0, -1);
+        const skip = () => {};
+        this.queue.push({ move: quarter, duration, resolve: skip }, { pause: opts.pause ?? 500, resolve: skip }, { move: quarter, duration, resolve });
+      } else {
+        this.queue.push({ move, duration, resolve });
+      }
+    });
+  }
+
+  // ---------- Destaque dos centros (piscar) ----------
+  flashCenters(faces, ms = 3000) {
+    this.stopFlash();
+    const want = new Set(faces.map((f) => FACES.indexOf(f) * 9 + 4));
+    const meshes = this.stickers.filter((st) => want.has(this.faceletOf(st)));
+    this.flash = { meshes, t0: performance.now(), ms };
+  }
+
+  stopFlash() {
+    if (!this.flash) return;
+    for (const st of this.flash.meshes) {
+      st.material.emissive.setHex(st.userData.glow ?? 0);
+      st.material.emissiveIntensity = 0.22;
+      st.scale.setScalar(1);
+    }
+    this.flash = null;
   }
 
   clearQueue() {
@@ -174,6 +202,7 @@ export class CubeView {
 
   finishAnim(silent = false) {
     const a = this.anim;
+    if (a.pause) { this.anim = null; a.resolve(!silent); return; }
     a.pivot.rotation[a.axisName] = a.target;
     a.pivot.updateMatrixWorld(true);
     const m = new THREE.Matrix4();
@@ -263,12 +292,29 @@ export class CubeView {
 
   tick() {
     const now = performance.now();
-    if (!this.anim && this.queue.length) this.startAnim(this.queue.shift());
+    if (!this.anim && this.queue.length) {
+      const job = this.queue.shift();
+      if (job.pause) this.anim = { pause: true, t0: now, duration: job.pause, resolve: job.resolve };
+      else this.startAnim(job);
+    }
     if (this.anim) {
       const a = this.anim;
       const t = Math.min(1, (now - a.t0) / a.duration);
-      a.pivot.rotation[a.axisName] = a.target * ease(t);
+      if (!a.pause) a.pivot.rotation[a.axisName] = a.target * ease(t);
       if (t >= 1) this.finishAnim();
+    }
+    if (this.flash) {
+      const f = this.flash, t = (now - f.t0) / f.ms;
+      if (t >= 1) this.stopFlash();
+      else {
+        // pulsos de brilho branco + leve aumento do adesivo
+        const p = 0.5 - 0.5 * Math.cos(((now - f.t0) / 520) * Math.PI * 2);
+        for (const st of f.meshes) {
+          st.material.emissive.setHex(0xffffff);
+          st.material.emissiveIntensity = 0.15 + 0.75 * p;
+          st.scale.setScalar(1 + 0.14 * p);
+        }
+      }
     }
     this.theta += (this.tTheta - this.theta) * 0.14;
     this.phi += (this.tPhi - this.phi) * 0.14;

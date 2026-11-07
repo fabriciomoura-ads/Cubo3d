@@ -5,6 +5,9 @@ import {
 import { solve, validate, SolveError, STAGES, STAGE_FAIL_HINT } from './solver.js';
 import { CubeView, PALETTE } from './cube-view.js';
 import { createScanner } from './scanner.js';
+import { fastSolve, warmUp } from './fast.js';
+
+warmUp(); // monta as tabelas do solucionador rápido em segundo plano
 
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -54,17 +57,30 @@ $('btn-scramble').onclick = async () => {
 
 $('btn-solve').onclick = async () => {
   if (play.solving || isSolved(play.state)) return;
-  let result;
-  try { result = solve(play.state); } catch (e) { console.error(e); return; }
   play.solving = true;
   const token = ++play.token;
   view.interactive = false;
   playRender();
   const badge = $('stage-badge');
   badge.hidden = false;
-  for (const step of result.steps) {
-    const st = STAGES[step.stage];
-    badge.textContent = st ? `Etapa ${st.id} de 8 · ${st.name}` : 'Ajuste final';
+  badge.textContent = 'Calculando…';
+  // Solução rápida (~20 movimentos); se o solucionador rápido falhar, usa o método de camadas.
+  let plan;
+  try {
+    const mv = await fastSolve(play.state);
+    plan = [{ label: `Solução rápida · ${mv.length} movimentos`, moves: mv }];
+  } catch (e) {
+    console.warn(e);
+    try {
+      plan = solve(play.state).steps.map((step) => {
+        const st = STAGES[step.stage];
+        return { label: st ? `Etapa ${st.id} de 8 · ${st.name}` : 'Ajuste final', moves: step.moves };
+      });
+    } catch (e2) { console.error(e2); plan = []; }
+  }
+  if (token !== play.token) return;
+  for (const step of plan) {
+    badge.textContent = step.label;
     for (const m of step.moves) {
       if (token !== play.token) return;
       await playMove(m, Math.max(70, speedPlay() * 0.55));
@@ -234,18 +250,30 @@ function showErrors(title, list) {
   box.innerHTML = `<strong>${title}</strong>${list.length ? '<ul>' + list.map((e) => `<li>${e}</li>`).join('') + '</ul>' : ''}`;
 }
 
-$('btn-check').onclick = () => {
+$('btn-check').onclick = async () => {
+  const btn = $('btn-check');
+  if (btn.disabled) return;
   const v = validate(paint.state);
   if (!v.ok) { showErrors('Tem algo estranho na pintura:', v.errors); return; }
   if (isSolved(paint.state)) { showErrors('Seu cubo já está resolvido!', []); return; }
+  // O método de camadas também serve de conferência: ele aponta em que etapa a pintura é impossível.
+  let result;
   try {
-    const result = solve(paint.state);
-    startLesson(result);
+    result = solve(paint.state);
   } catch (e) {
     if (e instanceof SolveError) {
       showErrors('Esse cubo não pode existir do jeito que foi pintado.', [STAGE_FAIL_HINT[e.stage] || e.message, 'Confira com calma face por face — um único adesivo trocado já impede a solução.']);
     } else { console.error(e); showErrors('Erro inesperado.', [String(e.message || e)]); }
+    return;
   }
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Calculando…';
+  let fast = null;
+  try { fast = await fastSolve(paint.state); } catch (e) { console.warn(e); }
+  btn.disabled = false;
+  btn.textContent = label;
+  startLesson(result, fast);
 };
 
 // =====================================================================
@@ -255,28 +283,83 @@ const learn = { phase: 'paint', initial: null, cur: null, steps: [], flat: [], p
 // Barra lateral: 0 (embaixo) = bem devagar, 100 (em cima) = rápido. Devolve a duração do giro em ms.
 const speedLearn = () => 2200 - +$('speed-learn').value * 19.5;
 
-function startLesson(result) {
+// Solução rápida em partes de 5 movimentos, para o usuário ter pontos de parada.
+const FAST_PART = 5;
+function fastSteps(moves) {
+  const n = Math.ceil(moves.length / FAST_PART);
+  return Array.from({ length: n }, (_, i) => ({
+    stage: 'fast',
+    title: `Parte ${i + 1} de ${n}`,
+    text: 'Faça um movimento de cada vez, seguindo a seta no cubo da tela.',
+    moves: moves.slice(i * FAST_PART, (i + 1) * FAST_PART),
+  }));
+}
+const fastStage = () => ({
+  name: 'Solução rápida',
+  goal: `Montar o seu cubo em só ${learn.flat.length} movimentos.`,
+  text: 'Este é um caminho curto calculado pelo computador. Os movimentos parecem aleatórios, mas confie: copie um por vez e, no último, o cubo fica montado.',
+});
+
+function startLesson(result, fastMoves) {
   learn.initial = paint.state.slice();
-  learn.cur = learn.initial.slice();
-  learn.steps = result.steps;
+  learn.methods = { fast: fastMoves && fastMoves.length ? fastSteps(fastMoves) : null, learn: result.steps };
+  learn.method = learn.methods.fast ? 'fast' : 'learn';
+  setPhase('solve');
+  view.setView('home');
+  loadMethod();
+}
+
+// Troca entre "Rápido" e "Passo a passo"; recomeça do cubo embaralhado.
+function loadMethod() {
+  const count = (k) => (learn.methods[k] || []).reduce((s, st) => s + st.moves.length, 0);
+  learn.steps = learn.methods[learn.method];
   learn.flat = [];
-  result.steps.forEach((st, si) => st.moves.forEach((m, mi) => learn.flat.push({ m, si, mi })));
+  learn.steps.forEach((st, si) => st.moves.forEach((m, mi) => learn.flat.push({ m, si, mi })));
   learn.pos = 0;
   learn.auto = false;
-  setPhase('solve');
+  learn.cur = learn.initial.slice();
+  view.clearQueue();
   view.setColors(learn.cur);
-  view.setView('home');
 
-  const present = new Set(result.steps.map((s) => s.stage));
-  $('stage-list').innerHTML = STAGES.slice(1).map((st) =>
-    `<button data-stage="${st.id}" class="${present.has(st.id) ? '' : 'skip'}" title="${st.name}"><div class="fill"></div><span>${st.id}</span></button>`).join('');
-  $('stage-list').onclick = (e) => {
-    const b = e.target.closest('button'); if (!b || view.busy) return;
-    const i = learn.flat.findIndex((f) => learn.steps[f.si].stage === +b.dataset.stage);
-    if (i >= 0) jumpTo(i);
-  };
+  $('method').hidden = !learn.methods.fast;
+  [...$('method').children].forEach((b) => {
+    b.classList.toggle('is-on', b.dataset.method === learn.method);
+    b.querySelector('small').textContent = `${count(b.dataset.method)} mov.`;
+  });
+
+  const isLearn = learn.method === 'learn';
+  $('stage-list').hidden = !isLearn;
+  $('done-text').textContent = isLearn
+    ? 'Se o cubo na sua mão está igual ao da tela, parabéns: você acabou de resolver um cubo mágico. Na próxima vez, tente lembrar das etapas: são só 8, e os algoritmos se repetem.'
+    : 'Se o cubo na sua mão está igual ao da tela, parabéns: está montado! Quer aprender a fazer sozinho? Escolha "Passo a passo" lá em cima.';
+  if (isLearn) {
+    const present = new Set(learn.steps.map((s) => s.stage));
+    $('stage-list').innerHTML = STAGES.slice(1).map((st) =>
+      `<button data-stage="${st.id}" class="${present.has(st.id) ? '' : 'skip'}" title="${st.name}"><div class="fill"></div><span>${st.id}</span></button>`).join('');
+    $('stage-list').onclick = (e) => {
+      const b = e.target.closest('button'); if (!b || view.busy) return;
+      const i = learn.flat.findIndex((f) => learn.steps[f.si].stage === +b.dataset.stage);
+      if (i >= 0) jumpTo(i);
+    };
+  }
+  startIntro();
   lessonRender();
 }
+
+// Sai da fase resolver: some com aviso e brilho sem redesenhar a lição.
+function cancelIntro() {
+  learn.intro = false;
+  clearTimeout(learn.introTimer);
+  hideToast();
+  view.stopFlash();
+}
+
+$('method').onclick = (e) => {
+  const b = e.target.closest('button');
+  if (!b || b.dataset.method === learn.method || view.busy) return;
+  learn.method = b.dataset.method;
+  loadMethod();
+};
 
 function jumpTo(i) {
   learn.auto = false;
@@ -291,10 +374,11 @@ function lessonRender() {
   const finished = pos >= flat.length;
   const item = flat[Math.min(pos, flat.length - 1)];
   const step = steps[item.si];
-  const stage = STAGES[step.stage];
+  const isFast = step.stage === 'fast';
+  const stage = isFast ? fastStage() : STAGES[step.stage];
 
-  // etapas
-  [...$('stage-list').children].forEach((b) => {
+  // etapas (só no passo a passo)
+  if (!isFast) [...$('stage-list').children].forEach((b) => {
     const id = +b.dataset.stage;
     const idxs = flat.map((f, i) => (steps[f.si].stage === id ? i : -1)).filter((i) => i >= 0);
     const doneN = idxs.filter((i) => i < pos).length;
@@ -303,7 +387,7 @@ function lessonRender() {
     b.querySelector('.fill').style.width = idxs.length ? `${(doneN / idxs.length) * 100}%` : '0';
   });
 
-  $('lesson-num').textContent = `Etapa ${stage.id} de 8`;
+  $('lesson-num').textContent = isFast ? `${flat.length} movimentos` : `Etapa ${stage.id} de 8`;
   $('lesson-title').innerHTML = stage.name.replace(/(\S+)$/, '<em>$1</em>');
   $('lesson-goal').textContent = stage.goal;
   $('lesson-text').textContent = stage.text;
@@ -325,39 +409,88 @@ function lessonRender() {
     $('now-key').textContent = item.m;
     $('now-face').innerHTML = d.face + (d.color ? `<i style="background:${PALETTE[d.color]}" title="centro ${COLOR_NAMES[d.color]}"></i>` : '');
     $('now-how').textContent = d.how.charAt(0).toUpperCase() + d.how.slice(1) + (d.color ? ` · face do centro ${COLOR_NAMES[d.color]}` : '') + '.';
-    if (!view.busy) view.showArrow(item.m);
+    if (!view.busy && !learn.intro) view.showArrow(item.m);
   }
   $('counter').textContent = `${Math.min(pos, flat.length)} / ${flat.length} movimentos`;
   $('bar').style.width = `${(pos / flat.length) * 100}%`;
   $('btn-prev').disabled = pos === 0;
-  $('btn-next').disabled = finished;
+  $('btn-next').disabled = finished || !!learn.intro;
+  $('btn-auto').disabled = finished || !!learn.intro;
   $('btn-next').textContent = finished ? 'Pronto!' : 'Fiz este movimento →';
   $('done').hidden = !finished;
   $('phases').children[1].classList.toggle('is-done', finished);
   setAutoIcon();
 }
 
+// ---------- Avisos didáticos: centros piscando + texto sobre o cubo ----------
+const isRotation = (m) => 'xyz'.includes(m[0]);
+const chip = (c) => `<i style="background:${PALETTE[c]}"></i>`;
+let toastTimer = 0;
+function showToast(html, ms) {
+  const t = $('stage-toast');
+  clearTimeout(toastTimer);
+  t.innerHTML = html;
+  t.hidden = false;
+  toastTimer = setTimeout(hideToast, ms);
+}
+function hideToast() {
+  clearTimeout(toastTimer);
+  $('stage-toast').hidden = true;
+}
+// Mostra como segurar o cubo: pisca o centro de cima e o da frente e explica em texto.
+function showOrientation(title, ms) {
+  const up = learn.cur[4], front = learn.cur[2 * 9 + 4];
+  view.flashCenters(['U', 'F'], ms);
+  showToast(
+    `<strong>${title}</strong>` +
+    `<span>${chip(up)} Centro <b>${COLOR_NAMES[up]}</b> para cima</span>` +
+    `<span>${chip(front)} Centro <b>${COLOR_NAMES[front]}</b> virado para você</span>`, ms);
+}
+const INTRO_MS = 3400;
+function startIntro() {
+  learn.intro = true;
+  showOrientation('Segure o seu cubo assim', INTRO_MS);
+  clearTimeout(learn.introTimer);
+  learn.introTimer = setTimeout(endIntro, INTRO_MS);
+}
+function endIntro() {
+  if (!learn.intro) return;
+  learn.intro = false;
+  clearTimeout(learn.introTimer);
+  hideToast();
+  view.stopFlash();
+  lessonRender();
+}
+$('stage-toast').onclick = () => { if (learn.intro) endIntro(); else hideToast(); };
+
+// Pausa no meio dos giros duplos (R2, y2…) para o leigo ver que são dois giros.
+const SPLIT = () => ({ split: true, pause: Math.max(450, speedLearn() * 0.45) });
+
 async function next() {
-  if (view.busy || learn.pos >= learn.flat.length) return false;
+  if (learn.intro || view.busy || learn.pos >= learn.flat.length) return false;
   const m = learn.flat[learn.pos].m;
   view.hideArrow();
-  const p = view.turn(m, speedLearn());
+  hideToast();
+  const p = view.turn(m, speedLearn(), SPLIT());
   learn.cur = applyMove(learn.cur, m);
   learn.pos++;
   await p;
+  if (isRotation(m) && mode === 'learn') showOrientation('Você girou o cubo inteiro. Agora:', 3000);
   lessonRender();
   return true;
 }
 
 async function prev() {
-  if (view.busy || learn.pos === 0) return;
+  if (learn.intro || view.busy || learn.pos === 0) return;
   learn.auto = false;
   const m = invertMove(learn.flat[learn.pos - 1].m);
   view.hideArrow();
-  const p = view.turn(m, speedLearn());
+  hideToast();
+  const p = view.turn(m, speedLearn(), SPLIT());
   learn.cur = applyMove(learn.cur, m);
   learn.pos--;
   await p;
+  if (isRotation(m) && mode === 'learn') showOrientation('Cubo inteiro de volta. Agora:', 3000);
   lessonRender();
 }
 
@@ -368,7 +501,10 @@ async function autoplay() {
     const prevStep = learn.flat[learn.pos].si;
     await sleep(speedLearn() * 0.5);
     if (!learn.auto) break;
+    const done = learn.flat[learn.pos] && learn.flat[learn.pos].m;
     await next();
+    // depois de girar o cubo inteiro, tempo para ver os centros piscando
+    if (done && isRotation(done)) await sleep(2600);
     // pausa maior ao trocar de passo, para dar tempo de ler
     if (learn.pos < learn.flat.length && learn.flat[learn.pos].si !== prevStep) await sleep(900);
   }
@@ -395,6 +531,7 @@ function setPhase(ph) {
   p1.classList.toggle('is-on', ph === 'paint');
   p1.classList.toggle('is-done', ph === 'solve');
   p2.classList.toggle('is-on', ph === 'solve');
+  if (ph === 'paint') cancelIntro();
   view.paintMode = ph === 'paint';
   view.interactive = false;
   $('speed-rail').hidden = ph !== 'solve';
@@ -416,6 +553,7 @@ function setMode(m) {
   if (m === mode) return;
   mode = m;
   learn.auto = false;
+  cancelIntro();
   play.token++;
   if (play.solving) { play.solving = false; }
   view.clearQueue();

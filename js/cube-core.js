@@ -190,7 +190,11 @@ const FACE_OF_MOVE = { R: 'R', L: 'L', U: 'U', D: 'D', F: 'F', B: 'B' };
 export function describeMove(m, state) {
   const base = m[0];
   let face, how;
-  if (m.endsWith('2')) { face = DOUBLE[base]; how = 'meia volta (180°) — tanto faz o sentido'; }
+  if (m.endsWith('2')) {
+    face = DOUBLE[base];
+    // Leigo entende melhor "duas vezes, uma de cada vez" do que "meia volta".
+    how = DESC[base] ? `${DESC[base][1]}, duas vezes (uma de cada vez)` : 'meia volta (180°): gire duas vezes, uma de cada vez';
+  }
   else { [face, how] = DESC[m]; }
   let color = null;
   const f = FACE_OF_MOVE[base];

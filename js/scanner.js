@@ -21,8 +21,6 @@ const TIPS = {
 // Face vizinha que aparece no mini ícone da dica, e de que lado ela fica.
 const EDGE = { F: ['U', 'top'], R: ['U', 'top'], B: ['U', 'top'], L: ['U', 'top'], U: ['F', 'bottom'], D: ['F', 'top'] };
 const COLS = ['W', 'Y', 'G', 'B', 'R', 'O'];
-// Pares que a luz costuma confundir: não geram aviso de "face errada".
-const GROUP = { W: 0, Y: 0, R: 1, O: 1, G: 2, B: 3 };
 
 // ---------------------------------------------------------------- cores
 function rgbToLab(r, g, b) {
@@ -56,6 +54,24 @@ function guess([r, g, b]) {
   if (h < 170) return 'G';
   if (h < 265) return 'B';
   return 'R';
+}
+
+// O centro da foto combina com a cor esperada? Faixas largas de tom, porque a luz
+// (amarelada, fraca) desloca as cores; pares que a luz confunde (branco/amarelo,
+// vermelho/laranja) se sobrepõem, mas verde, azul e o par vermelho/laranja nunca.
+function centerMatches(rgb, exp) {
+  const [h, s] = rgbToHsv(...rgb);
+  switch (exp) {
+    // Branco e amarelo ficam com o mesmo tom em luz quente; a saturação separa os dois.
+    case 'W': return s < 0.5;
+    case 'Y': return s >= 0.5 && h >= 38 && h < 85;
+    // Vermelho e laranja: separados pelo tom, com uma pequena faixa em comum (10° a 16°).
+    case 'R': return s >= 0.5 && (h < 16 || h >= 315);
+    case 'O': return s >= 0.5 && h >= 10 && h < 40;
+    case 'G': return s >= 0.2 && h >= 75 && h < 185;
+    case 'B': return s >= 0.2 && h >= 175 && h < 285;
+    default: return true;
+  }
 }
 
 const dE = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -117,7 +133,7 @@ export function createScanner({ onApply }) {
   const dlg = $('scan'), video = $('scan-video'), guide = $('scan-guide');
   const cv = document.createElement('canvas');
   const ctx = cv.getContext('2d', { willReadFrequently: true });
-  let stream = null, raf = 0, lastT = 0, cur = 'F', force = false, shots = {}, result = null;
+  let stream = null, raf = 0, lastT = 0, cur = 'F', shots = {}, result = null;
 
   guide.innerHTML = '<span><i></i></span>'.repeat(9);
   const dots = [...guide.querySelectorAll('i')];
@@ -223,18 +239,17 @@ export function createScanner({ onApply }) {
     const rgb = sample(150);
     if (!rgb) return;
     const lab = rgb.map((c) => rgbToLab(...c));
-    const exp = DEFAULT_SCHEME[cur], got = guess(rgb[4]);
-    if (!force) {
-      let w = '';
-      if (GROUP[got] !== GROUP[exp]) {
-        w = `O centro parece ${COLOR_NAMES[got]}, mas agora é a vez do lado com centro ${COLOR_NAMES[exp]}. Toque de novo para usar assim mesmo.`;
-      } else {
-        const dup = ORDER.find((f) => f !== cur && shots[f] && dE(shots[f].lab[4], lab[4]) < 10);
-        if (dup) w = `Parece o mesmo lado que você já mostrou (${NAMES[dup].toLowerCase()}). Toque de novo para usar assim mesmo.`;
-      }
-      if (w) { warn(w); force = true; return; }
+    const exp = DEFAULT_SCHEME[cur];
+    // Lado errado é sempre recusado: só aceita quando o centro bate com a cor esperada.
+    if (!centerMatches(rgb[4], exp)) {
+      warn(`Lado errado: o centro parece ${COLOR_NAMES[guess(rgb[4])]}. Mostre o lado com centro ${COLOR_NAMES[exp]}.`);
+      return;
     }
-    force = false;
+    const dup = ORDER.find((f) => f !== cur && shots[f] && dE(shots[f].lab[4], lab[4]) < 9);
+    if (dup) {
+      warn(`Esse lado já foi escaneado (${NAMES[dup].toLowerCase()}). Mostre o lado com centro ${COLOR_NAMES[exp]}.`);
+      return;
+    }
     warn('');
     shots[cur] = { rgb, lab };
     if (navigator.vibrate) navigator.vibrate(25);
@@ -288,7 +303,7 @@ export function createScanner({ onApply }) {
   }
 
   function reset() {
-    shots = {}; cur = 'F'; force = false; result = null;
+    shots = {}; cur = 'F'; result = null;
     $('scan-result').hidden = true;
     warn('');
     dots.forEach((d) => { d.style.background = ''; });
@@ -302,7 +317,7 @@ export function createScanner({ onApply }) {
   $('scan-faces').onclick = (e) => {
     const b = e.target.closest('button');
     if (!b || result) return;
-    cur = b.dataset.face; force = false; warn(''); render();
+    cur = b.dataset.face; warn(''); render();
   };
   dlg.addEventListener('close', stopCamera);
   dlg.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { if (!result && e.target === dlg) { e.preventDefault(); shoot(); } } });

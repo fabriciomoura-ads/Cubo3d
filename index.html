@@ -43,6 +43,7 @@
         <span class="speed-rail-lbl">devagar</span>
       </div>
       <div class="stage-badge" id="stage-badge" hidden></div>
+      <div class="stage-toast" id="stage-toast" role="status" aria-live="polite" hidden></div>
       <footer class="signature">
         Desenvolvido por <strong>Fabricio Moura</strong>
         <a href="https://instagram.com/mouraafabricio" target="_blank" rel="noopener">@mouraafabricio</a>
@@ -143,6 +144,10 @@
 
       <!-- Fase 2: resolver -->
       <div id="phase-solve" hidden>
+        <div class="method" id="method" role="group" aria-label="Como resolver">
+          <button data-method="fast">Rápido <small></small></button>
+          <button data-method="learn">Passo a passo <small></small></button>
+        </div>
         <div class="stages" id="stage-list"></div>
 
         <article class="lesson">
@@ -183,7 +188,7 @@
 
         <div class="done" id="done" hidden>
           <h3 class="display md"><em>Resolvido.</em></h3>
-          <p>Se o cubo na sua mão está igual ao da tela, parabéns — você acabou de resolver um cubo mágico. Na próxima vez, tente lembrar das etapas: são só 8, e os algoritmos se repetem.</p>
+          <p id="done-text"></p>
         </div>
       </div>
     </aside>
