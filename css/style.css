@@ -270,11 +270,28 @@ kbd { font: 500 11.5px var(--mono); border: 1px solid var(--line); border-bottom
   font-size: 14px; line-height: 1.3; box-shadow: 0 18px 40px -16px rgba(0,0,0,.5);
   animation: toast-in .3s ease;
 }
+.stage-toast { cursor: default; padding-right: 46px; }
 .stage-toast strong { font: 400 20px/1.1 var(--serif); margin-bottom: 2px; }
+.toast-x {
+  position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border: 0; border-radius: 50%;
+  background: rgba(255,255,255,.14); color: #fff; font-size: 20px; line-height: 1; display: grid; place-items: center;
+}
+.toast-x:hover { background: var(--red); }
 .stage-toast span { display: flex; align-items: center; gap: 9px; }
 .stage-toast b { font-weight: 600; }
 .stage-toast i { width: 16px; height: 16px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+/* Faixa do movimento atual (só no celular) */
+.now-bar { display: none; }
+.now-bar-key {
+  flex: none; min-width: 46px; height: 46px; padding: 0 8px; border-radius: 9px; background: var(--red); color: #fff;
+  display: grid; place-items: center; font: 700 22px/1 var(--mono); letter-spacing: -0.03em;
+}
+.now-bar-txt { min-width: 0; }
+.now-bar-face { margin: 0; font: 400 20px/1.05 var(--serif); }
+.now-bar-face i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-left: 6px; vertical-align: 2px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); }
+.now-bar-how { margin: 2px 0 0; font-size: 12.5px; line-height: 1.3; color: rgba(255,255,255,.75); }
 
 /* Escolha do método de solução */
 .method { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 22px; background: var(--paper-2); border-radius: 999px; }
@@ -440,7 +457,12 @@ kbd { font: 500 11.5px var(--mono); border: 1px solid var(--line); border-bottom
   /* Fase resolver: movimento atual e botões logo abaixo do cubo */
   #phase-solve { display: flex; flex-direction: column; }
   #phase-solve .method { order: -5; margin-bottom: 14px; }
-  #phase-solve .now { order: -4; }
+  #phase-solve .now { display: none; }
+  .now-bar:not([hidden]) {
+    display: flex; align-items: center; gap: 12px; position: absolute; top: 8px; left: 10px; right: 10px; z-index: 3;
+    padding: 7px 12px 7px 7px; border-radius: 14px; background: var(--ink); color: #fff;
+    box-shadow: 0 12px 28px -14px rgba(0,0,0,.45);
+  }
   #phase-solve .player { order: -3; }
   #phase-solve .progress { order: -2; }
   #phase-solve .player-foot { order: -1; margin-bottom: 26px; }

@@ -411,6 +411,10 @@ function lessonRender() {
     $('now-how').textContent = d.how.charAt(0).toUpperCase() + d.how.slice(1) + (d.color ? ` · face do centro ${COLOR_NAMES[d.color]}` : '') + '.';
     if (!view.busy && !learn.intro) view.showArrow(item.m);
   }
+  // faixa do celular espelha o quadro "movimento atual"
+  $('nb-key').textContent = $('now-key').textContent;
+  $('nb-face').innerHTML = $('now-face').innerHTML;
+  $('nb-how').textContent = $('now-how').textContent;
   $('counter').textContent = `${Math.min(pos, flat.length)} / ${flat.length} movimentos`;
   $('bar').style.width = `${(pos / flat.length) * 100}%`;
   $('btn-prev').disabled = pos === 0;
@@ -431,37 +435,39 @@ function showToast(html, ms) {
   clearTimeout(toastTimer);
   t.innerHTML = html;
   t.hidden = false;
-  toastTimer = setTimeout(hideToast, ms);
+  if (Number.isFinite(ms)) toastTimer = setTimeout(hideToast, ms); // Infinity: só fecha no ×
 }
 function hideToast() {
   clearTimeout(toastTimer);
   $('stage-toast').hidden = true;
+  view.stopFlash();
 }
-// Mostra como segurar o cubo: pisca o centro de cima e o da frente e explica em texto.
-function showOrientation(title, ms) {
+// Mostra como segurar o cubo: os centros de cima e da frente piscam (na própria cor)
+// e o aviso fica aberto até a pessoa fechar no ×.
+function showOrientation(title) {
   const up = learn.cur[4], front = learn.cur[2 * 9 + 4];
-  view.flashCenters(['U', 'F'], ms);
+  view.flashCenters(['U', 'F'], Infinity);
   showToast(
+    `<button class="toast-x" aria-label="Fechar aviso">×</button>` +
     `<strong>${title}</strong>` +
     `<span>${chip(up)} Centro <b>${COLOR_NAMES[up]}</b> para cima</span>` +
-    `<span>${chip(front)} Centro <b>${COLOR_NAMES[front]}</b> virado para você</span>`, ms);
+    `<span>${chip(front)} Centro <b>${COLOR_NAMES[front]}</b> virado para você</span>`, Infinity);
 }
-const INTRO_MS = 3400;
+// No começo os botões ficam travados até fechar o aviso, para garantir a leitura.
 function startIntro() {
   learn.intro = true;
-  showOrientation('Segure o seu cubo assim', INTRO_MS);
-  clearTimeout(learn.introTimer);
-  learn.introTimer = setTimeout(endIntro, INTRO_MS);
+  showOrientation('Segure o seu cubo assim');
 }
 function endIntro() {
   if (!learn.intro) return;
   learn.intro = false;
-  clearTimeout(learn.introTimer);
   hideToast();
-  view.stopFlash();
   lessonRender();
 }
-$('stage-toast').onclick = () => { if (learn.intro) endIntro(); else hideToast(); };
+$('stage-toast').onclick = (e) => {
+  if (!e.target.closest('.toast-x')) return;
+  if (learn.intro) endIntro(); else hideToast();
+};
 
 // Pausa no meio dos giros duplos (R2, y2…) para o leigo ver que são dois giros.
 const SPLIT = () => ({ split: true, pause: Math.max(450, speedLearn() * 0.45) });
@@ -475,7 +481,7 @@ async function next() {
   learn.cur = applyMove(learn.cur, m);
   learn.pos++;
   await p;
-  if (isRotation(m) && mode === 'learn') showOrientation('Você girou o cubo inteiro. Agora:', 3000);
+  if (isRotation(m) && mode === 'learn') showOrientation('Você girou o cubo inteiro. Agora:');
   lessonRender();
   return true;
 }
@@ -490,7 +496,7 @@ async function prev() {
   learn.cur = applyMove(learn.cur, m);
   learn.pos--;
   await p;
-  if (isRotation(m) && mode === 'learn') showOrientation('Cubo inteiro de volta. Agora:', 3000);
+  if (isRotation(m) && mode === 'learn') showOrientation('Cubo inteiro de volta. Agora:');
   lessonRender();
 }
 
@@ -535,6 +541,7 @@ function setPhase(ph) {
   view.paintMode = ph === 'paint';
   view.interactive = false;
   $('speed-rail').hidden = ph !== 'solve';
+  $('now-bar').hidden = ph !== 'solve';
   view.hideArrow();
   if (ph === 'paint') {
     view.setColors(paint.state);
@@ -562,6 +569,7 @@ function setMode(m) {
   $('panel-learn').hidden = m !== 'learn';
   $('view-pad').hidden = m !== 'learn';
   $('speed-rail').hidden = true;
+  $('now-bar').hidden = true;
   $('stage-badge').hidden = true;
   if (m === 'play') {
     view.paintMode = false;

@@ -307,11 +307,11 @@ export class CubeView {
       const f = this.flash, t = (now - f.t0) / f.ms;
       if (t >= 1) this.stopFlash();
       else {
-        // pulsos de brilho branco + leve aumento do adesivo
+        // pulsos de brilho na cor do próprio centro + leve aumento do adesivo
         const p = 0.5 - 0.5 * Math.cos(((now - f.t0) / 520) * Math.PI * 2);
         for (const st of f.meshes) {
-          st.material.emissive.setHex(0xffffff);
-          st.material.emissiveIntensity = 0.15 + 0.75 * p;
+          st.material.emissive.setHex(st.userData.glow ?? 0);
+          st.material.emissiveIntensity = 0.22 + 0.95 * p;
           st.scale.setScalar(1 + 0.14 * p);
         }
       }
