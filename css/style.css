@@ -257,12 +257,19 @@ kbd { font: 500 11.5px var(--mono); border: 1px solid var(--line); border-bottom
 /* Velocidade na lateral do cubo (fase resolver): fica sempre à vista, sem rolar a tela. */
 .speed-rail {
   position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 3;
-  display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 6px;
-  background: rgba(255,255,255,.9); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: 999px;
-  box-shadow: 0 10px 28px -14px rgba(0,0,0,.3);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
 .speed-rail input { writing-mode: vertical-lr; direction: rtl; flex: none; width: 28px; height: 150px; margin: 0; }
 .speed-rail-lbl { font: 500 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* Assinatura no fim da página (só no celular) */
+.site-foot {
+  display: none; justify-content: center; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line);
+  font-size: 11px; color: var(--ink-2); opacity: .75;
+}
+.site-foot strong { font-weight: 400; }
+.site-foot a { color: inherit; text-decoration: none; }
 
 /* Regra do centro (fase pintar) */
 .center-rule { display: grid; grid-template-columns: 64px 1fr; gap: 16px; align-items: center; background: var(--paper-2); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
@@ -394,10 +401,27 @@ kbd { font: 500 11.5px var(--mono); border: 1px solid var(--line); border-bottom
   .panel { padding: 30px 16px 44px; overflow: visible; }
   /* Botão da câmera preso no rodapé da tela enquanto a fase de pintar estiver à vista. */
   .scan-cta { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 5; box-shadow: 0 14px 34px -10px rgba(0,0,0,.5); }
-  .speed-rail { right: 10px; }
+  .speed-rail { right: 8px; }
   .speed-rail input { height: 120px; }
-  .top { padding: 14px 16px; gap: 14px; flex-wrap: wrap; }
+  /* Navbar compacta */
+  .top { padding: 8px 16px 0; gap: 4px 14px; flex-wrap: wrap; }
+  .brand { gap: 9px; }
+  .brand-mark { grid-template-columns: repeat(3, 5px); padding: 3px; gap: 1.5px; }
+  .brand-mark i { width: 5px; height: 5px; }
+  .brand-word { font-size: 24px; }
   .tabs { order: 3; width: 100%; margin-left: 0; gap: 22px; }
+  .tab { padding: 6px 0 9px; font-size: 14px; }
+  /* Mais espaço: sem legenda de fases, sem "Ver lado", assinatura no rodapé da página */
+  .phases, .view-pad, .stage .signature { display: none !important; }
+  .stage-hint { bottom: 14px; }
+  .site-foot { display: flex; }
+  .panel { padding-top: 22px; }
+  /* Fase resolver: movimento atual e botões logo abaixo do cubo */
+  #phase-solve { display: flex; flex-direction: column; }
+  #phase-solve .now { order: -4; }
+  #phase-solve .player { order: -3; }
+  #phase-solve .progress { order: -2; }
+  #phase-solve .player-foot { order: -1; margin-bottom: 26px; }
   #btn-notation { margin-left: auto; }
   .display { font-size: 50px; }
   .display.md, .lesson .display { font-size: 38px; }

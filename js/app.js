@@ -331,7 +331,7 @@ function lessonRender() {
   $('bar').style.width = `${(pos / flat.length) * 100}%`;
   $('btn-prev').disabled = pos === 0;
   $('btn-next').disabled = finished;
-  $('btn-next').textContent = finished ? 'Pronto!' : pos === 0 ? 'Começar: fiz este movimento →' : 'Fiz este movimento →';
+  $('btn-next').textContent = finished ? 'Pronto!' : 'Fiz este movimento →';
   $('done').hidden = !finished;
   $('phases').children[1].classList.toggle('is-done', finished);
   setAutoIcon();
