@@ -8,14 +8,15 @@ const $ = (id) => document.getElementById(id);
 
 // Mesma ordem e mesma orientação da pintura manual (ver FACE_INFO em app.js).
 const ORDER = ['F', 'R', 'B', 'L', 'U', 'D'];
-const NAMES = { F: 'Frente', R: 'Direita', B: 'Trás', L: 'Esquerda', U: 'Cima', D: 'Baixo' };
+// Cada lado é chamado pela cor do centro, que nunca muda de lugar.
+const NAMES = { F: 'Lado verde', R: 'Lado laranja', B: 'Lado azul', L: 'Lado vermelho', U: 'Lado amarelo', D: 'Lado branco' };
 const TIPS = {
-  F: 'Centro <b>verde</b> de frente e <b>amarelo</b> em cima',
-  R: 'Gire o cubo para a esquerda: centro <b>laranja</b> de frente, amarelo em cima',
-  B: 'Gire para a esquerda de novo: centro <b>azul</b> de frente, amarelo em cima',
-  L: 'Mais uma vez para a esquerda: centro <b>vermelho</b> de frente, amarelo em cima',
-  U: 'Verde de frente e incline o <b>topo amarelo</b> para a câmera: o verde fica embaixo',
-  D: 'Agora o outro lado: <b>base branca</b> para a câmera, com o verde em cima',
+  F: 'Mostre o lado com <b>centro verde</b>, com o centro amarelo em cima',
+  R: 'Gire o cubo para a esquerda: <b>centro laranja</b> para a câmera, amarelo em cima',
+  B: 'Gire para a esquerda de novo: <b>centro azul</b> para a câmera, amarelo em cima',
+  L: 'Mais uma vez para a esquerda: <b>centro vermelho</b> para a câmera, amarelo em cima',
+  U: 'Verde virado para você e incline o <b>centro amarelo</b> para a câmera: o verde fica embaixo',
+  D: 'Agora o outro lado: <b>centro branco</b> para a câmera, com o verde em cima',
 };
 // Face vizinha que aparece no mini ícone da dica, e de que lado ela fica.
 const EDGE = { F: ['U', 'top'], R: ['U', 'top'], B: ['U', 'top'], L: ['U', 'top'], U: ['F', 'bottom'], D: ['F', 'top'] };
@@ -201,6 +202,9 @@ export function createScanner({ onApply }) {
   function render() {
     const n = ORDER.indexOf(cur);
     $('scan-step').textContent = `${n + 1} de 6 · ${NAMES[cur]}`;
+    // O quadrado do meio da grade ganha a borda da cor esperada: é por ele que o lado é reconhecido.
+    guide.style.setProperty('--center', PALETTE[DEFAULT_SCHEME[cur]]);
+    guide.dataset.center = `centro ${COLOR_NAMES[DEFAULT_SCHEME[cur]]}`;
     const [ef, side] = EDGE[cur];
     $('scan-tip').innerHTML =
       `<span class="mini" aria-hidden="true"><span class="mini-f" style="background:${PALETTE[DEFAULT_SCHEME[cur]]}"></span><span class="mini-e is-${side}" style="background:${PALETTE[DEFAULT_SCHEME[ef]]}"></span></span><span>${TIPS[cur]}</span>`;
@@ -223,10 +227,10 @@ export function createScanner({ onApply }) {
     if (!force) {
       let w = '';
       if (GROUP[got] !== GROUP[exp]) {
-        w = `O centro parece ${COLOR_NAMES[got]}, mas agora é a vez do ${COLOR_NAMES[exp]}. Toque de novo para usar assim mesmo.`;
+        w = `O centro parece ${COLOR_NAMES[got]}, mas agora é a vez do lado com centro ${COLOR_NAMES[exp]}. Toque de novo para usar assim mesmo.`;
       } else {
         const dup = ORDER.find((f) => f !== cur && shots[f] && dE(shots[f].lab[4], lab[4]) < 10);
-        if (dup) w = `Parece a mesma face que você já mostrou (${NAMES[dup]}). Toque de novo para usar assim mesmo.`;
+        if (dup) w = `Parece o mesmo lado que você já mostrou (${NAMES[dup].toLowerCase()}). Toque de novo para usar assim mesmo.`;
       }
       if (w) { warn(w); force = true; return; }
     }

@@ -94,13 +94,15 @@ $('btn-reset').onclick = () => {
 const COLORS = ['W', 'Y', 'G', 'B', 'R', 'O'];
 const FACE_ORDER = ['F', 'R', 'B', 'L', 'U', 'D'];
 const FACE_INFO = {
-  F: ['Frente', 'Olhe direto para a face com centro verde, amarelo em cima. Pinte exatamente como você vê.'],
-  R: ['Direita', 'Vire o cubo para a esquerda até o centro laranja ficar de frente (amarelo continua em cima). Pinte como você vê.'],
-  B: ['Trás', 'Dê meia volta no cubo até o centro azul ficar de frente (amarelo continua em cima). Pinte como você vê.'],
-  L: ['Esquerda', 'Vire o cubo para a direita até o centro vermelho ficar de frente (amarelo continua em cima). Pinte como você vê.'],
-  U: ['Cima', 'Com o verde de frente, incline o topo amarelo na sua direção para olhar de cima. A fileira de baixo do desenho é a que encosta no verde.'],
-  D: ['Baixo', 'Com o verde de frente, incline o cubo para olhar a base branca. A fileira de cima do desenho é a que encosta no verde.'],
+  F: ['Lado verde', 'Olhe o lado com o centro verde, com o centro amarelo em cima. Pinte exatamente como você vê.'],
+  R: ['Lado laranja', 'Vire o cubo para a esquerda até o centro laranja ficar virado para você (amarelo continua em cima). Pinte como você vê.'],
+  B: ['Lado azul', 'Dê meia volta no cubo até o centro azul ficar virado para você (amarelo continua em cima). Pinte como você vê.'],
+  L: ['Lado vermelho', 'Vire o cubo para a direita até o centro vermelho ficar virado para você (amarelo continua em cima). Pinte como você vê.'],
+  U: ['Lado amarelo', 'Com o centro verde virado para você, incline o topo amarelo na sua direção. A fileira de baixo do desenho é a que encosta no lado verde.'],
+  D: ['Lado branco', 'Com o centro verde virado para você, incline o cubo para ver a base branca. A fileira de cima do desenho é a que encosta no lado verde.'],
 };
+// Nome curto para as abas: só a cor do centro.
+const tabName = (f) => FACE_INFO[f][0].replace('Lado ', '').replace(/^./, (c) => c.toUpperCase());
 const fIndex = (f) => FACES.indexOf(f);
 
 const paint = { state: null, face: 'F', color: 'W' };
@@ -120,7 +122,7 @@ const isDark = (c) => ['G', 'B', 'R', 'X'].includes(c);
 
 function buildPaintUI() {
   $('face-tabs').innerHTML = FACE_ORDER.map((f) =>
-    `<button data-face="${f}"><i style="background:${PALETTE[DEFAULT_SCHEME[f]]}"></i>${FACE_INFO[f][0]}</button>`).join('');
+    `<button data-face="${f}"><i style="background:${PALETTE[DEFAULT_SCHEME[f]]}"></i>${tabName(f)}</button>`).join('');
   $('face-tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) selectFace(b.dataset.face); };
 
   $('palette').innerHTML = COLORS.map((c, i) =>
@@ -184,7 +186,7 @@ function paintRender() {
     b.classList.toggle('center', i === 4);
     b.classList.toggle('dark', isDark(c));
   });
-  $('face-title').textContent = `${FACE_INFO[paint.face][0]} — centro ${COLOR_NAMES[DEFAULT_SCHEME[paint.face]]}`;
+  $('face-title').textContent = FACE_INFO[paint.face][0];
   $('face-how').textContent = FACE_INFO[paint.face][1];
   const counts = {};
   s.forEach((c) => { counts[c] = (counts[c] || 0) + 1; });
@@ -250,7 +252,8 @@ $('btn-check').onclick = () => {
 // MODO APRENDER — fase 2: resolver passo a passo
 // =====================================================================
 const learn = { phase: 'paint', initial: null, cur: null, steps: [], flat: [], pos: 0, auto: false };
-const speedLearn = () => +$('speed-learn').value;
+// Barra lateral: 0 (embaixo) = bem devagar, 100 (em cima) = rápido. Devolve a duração do giro em ms.
+const speedLearn = () => 2200 - +$('speed-learn').value * 19.5;
 
 function startLesson(result) {
   learn.initial = paint.state.slice();
@@ -394,6 +397,7 @@ function setPhase(ph) {
   p2.classList.toggle('is-on', ph === 'solve');
   view.paintMode = ph === 'paint';
   view.interactive = false;
+  $('speed-rail').hidden = ph !== 'solve';
   view.hideArrow();
   if (ph === 'paint') {
     view.setColors(paint.state);
@@ -419,6 +423,7 @@ function setMode(m) {
   $('panel-play').hidden = m !== 'play';
   $('panel-learn').hidden = m !== 'learn';
   $('view-pad').hidden = m !== 'learn';
+  $('speed-rail').hidden = true;
   $('stage-badge').hidden = true;
   if (m === 'play') {
     view.paintMode = false;

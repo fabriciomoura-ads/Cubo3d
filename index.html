@@ -32,10 +32,15 @@
       <div class="stage-word" aria-hidden="true">cubo<em>.</em></div>
       <div class="stage-hint" id="stage-hint">Arraste uma face para girar a camada · arraste o fundo para ver de outro ângulo</div>
       <div class="view-pad" id="view-pad" hidden>
-        <span>Ver:</span>
-        <button data-view="F">Frente</button><button data-view="R">Direita</button><button data-view="B">Trás</button>
-        <button data-view="L">Esquerda</button><button data-view="U">Cima</button><button data-view="D">Baixo</button>
+        <span>Ver lado:</span>
+        <button data-view="F">Verde</button><button data-view="R">Laranja</button><button data-view="B">Azul</button>
+        <button data-view="L">Vermelho</button><button data-view="U">Amarelo</button><button data-view="D">Branco</button>
         <button data-view="home">3/4</button>
+      </div>
+      <div class="speed-rail" id="speed-rail" hidden>
+        <span class="speed-rail-lbl">rápido</span>
+        <input type="range" id="speed-learn" min="0" max="100" value="0" step="5" aria-label="Velocidade da animação: para cima mais rápido, para baixo mais devagar">
+        <span class="speed-rail-lbl">devagar</span>
       </div>
       <div class="stage-badge" id="stage-badge" hidden></div>
       <footer class="signature">
@@ -88,14 +93,27 @@
 
         <button class="scan-cta" id="btn-scan">
           <span class="scan-cta-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.8-2.5h6.4L17 8.5h3v10H4z" /><circle cx="12" cy="13.3" r="3.3" /></svg></span>
-          <span class="scan-cta-txt"><strong>Escanear com a câmera</strong><small>Mostre as 6 faces e as cores são lidas sozinhas</small></span>
+          <span class="scan-cta-txt"><strong>Escanear com a câmera</strong><small>Mostre os 6 lados e as cores são lidas sozinhas</small></span>
           <span class="scan-cta-go" aria-hidden="true">→</span>
         </button>
+
+        <div class="center-rule">
+          <div class="center-face" aria-hidden="true">
+            <i style="background:var(--O)"></i><i style="background:var(--W)"></i><i style="background:var(--B)"></i>
+            <i style="background:var(--R)"></i><i class="is-center" style="background:var(--G)"></i><i style="background:var(--Y)"></i>
+            <i style="background:var(--Y)"></i><i style="background:var(--B)"></i><i style="background:var(--O)"></i>
+          </div>
+          <div>
+            <p class="center-rule-title">O quadrado do meio manda</p>
+            <p>A cor do <strong>centro</strong> é a cor daquele lado, e ele nunca sai do lugar. Este é o <strong>lado verde</strong>, mesmo com os outros quadrados misturados.</p>
+          </div>
+        </div>
+
         <p class="scan-or">ou pinte manualmente</p>
 
         <div class="hold">
           <div class="hold-cube" aria-hidden="true"><b class="t"></b><b class="f"></b><b class="r"></b></div>
-          <p>Segure o cubo com o centro <strong class="chip-y">amarelo em cima</strong> e o <strong class="chip-g">verde de frente</strong>. Os centros nunca mudam de lugar — eles já estão pintados.</p>
+          <p>Segure o cubo com o <strong class="chip-y">centro amarelo em cima</strong> e o <strong class="chip-g">centro verde virado para você</strong>.</p>
         </div>
 
         <div class="face-tabs" id="face-tabs"></div>
@@ -160,7 +178,6 @@
         <div class="progress"><div class="bar" id="bar"></div></div>
         <div class="player-foot">
           <span class="mono" id="counter">0 / 0</span>
-          <label class="speed-inline">velocidade <input type="range" id="speed-learn" min="200" max="1200" value="650" step="50"></label>
           <button class="link-btn" id="btn-edit">Editar cores</button>
         </div>
 
