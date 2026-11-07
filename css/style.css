@@ -55,6 +55,11 @@ em { font-style: italic; }
 .tab:hover { color: var(--ink); }
 .tab.is-on { color: var(--ink); }
 .tab.is-on::after { transform: scaleX(1); }
+/* "Aprender a resolver" em destaque: pílula vermelha preenchida, para não passar despercebido */
+.tab.tab-cta { background: var(--red); color: #fff; padding: 7px 16px; border-radius: 999px; font-weight: 600; box-shadow: 0 6px 16px -6px rgba(227,0,15,.55); transition: background .2s, box-shadow .2s; }
+.tab.tab-cta::after { display: none; }
+.tab.tab-cta:hover { background: #c4000d; color: #fff; }
+.tab.tab-cta.is-on { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--red); }
 .link-btn { border: 0; background: none; padding: 4px 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line); font-size: 14px; }
 .link-btn:hover { text-decoration-color: var(--red); color: var(--ink); }
 
@@ -449,6 +454,8 @@ kbd { font: 500 11.5px var(--mono); border: 1px solid var(--line); border-bottom
   .brand-word { font-size: 24px; }
   .tabs { order: 3; width: 100%; margin-left: 0; gap: 22px; }
   .tab { padding: 6px 0 9px; font-size: 14px; }
+  .tabs { align-items: center; }
+  .tab.tab-cta { padding: 6px 14px; margin: 2px 0 8px; }
   /* Mais espaço: sem legenda de fases, sem "Ver lado", assinatura no rodapé da página */
   .phases, .view-pad, .stage .signature { display: none !important; }
   .stage-hint { bottom: 14px; }
